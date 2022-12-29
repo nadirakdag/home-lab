@@ -1,0 +1,2 @@
+[poc]
+10.20.30.156 ansible_ssh_user=poc ansible_ssh_private_key_file=~/.ssh/id_rsa
