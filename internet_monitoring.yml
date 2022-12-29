@@ -1,0 +1,86 @@
+---
+- hosts: poc
+
+  tasks:
+    # - name: check podman
+    #   become: true
+    #   dnf: 
+    #    name: podman
+    #    state: present
+
+    # - name: test container run
+    #   become: false 
+    #   containers.podman.podman_container:
+    #    name: test 
+    #    image: registry.access.redhat.com/ubi8
+    #    state: started
+    #    restart_policy: always
+    #    volume:
+    #     - /mnt/second/internet-monitoring/blackbox/config:/config
+    #    command: tail -f /dev/null
+
+    # - name: pull image
+    #   become: false 
+    #   podman_image: 
+    #    name: docker.io/prom/node-exporter
+    #    tag: latest
+
+    - name: Create a podman network
+      containers.podman.podman_network:
+        name: internet-monitoring
+
+    - name: node-exporter container run
+      containers.podman.podman_container:
+       name: node-exporter 
+       image: docker.io/prom/node-exporter
+       state: started
+       expose: 9100
+       restart_policy: always
+       network: internet-monitoring
+       volume:
+        - /proc:/host/proc:ro
+        - /sys:/host/sys:ro
+        - /:/rootfs:ro
+       command:
+        - '--path.procfs=/host/proc'
+        - '--path.sysfs=/host/sys'
+        - --collector.filesystem.ignored-mount-points
+        - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+
+    - name: ping container run
+      containers.podman.podman_container:
+       name: ping 
+       image: docker.io/prom/blackbox-exporter
+       state: started
+       expose: 9115
+       restart_policy: always
+       network: internet-monitoring
+       volume:
+        - /mnt/second/internet-monitoring/blackbox/config:/config
+       command:
+        - '--config.file=/config/blackbox.yml'
+
+    - name: speedtest container run
+      containers.podman.podman_container:
+       name: speedtest 
+       image: docker.io/stefanwalther/speedtest-exporter
+       state: started
+       expose: 9696
+       restart_policy: always
+       network: internet-monitoring  
+
+    - name: prometheus container run
+      containers.podman.podman_container:
+       name: prometheus 
+       image: docker.io/prom/prometheus:v2.0.0
+       state: started
+       expose: 9090
+       restart_policy: always
+       network: internet-monitoring
+       volume:
+        - /mnt/second/internet-monitoring/prometheus:/etc/prometheus
+       command:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+        - '--storage.tsdb.path=/prometheus'
+        - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+        - '--web.console.templates=/usr/share/prometheus/consoles'
