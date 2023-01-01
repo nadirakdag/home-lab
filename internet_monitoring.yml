@@ -84,3 +84,20 @@
         - '--storage.tsdb.path=/prometheus'
         - '--web.console.libraries=/usr/share/prometheus/console_libraries'
         - '--web.console.templates=/usr/share/prometheus/consoles'
+       
+    - name: Grafana container run
+      containers.podman.podman_container:
+       name: Grafana 
+       image: docker.io/grafana/grafana
+       state: started
+       ports: 
+        - 3030:3000
+       restart_policy: always
+       network: internet-monitoring
+       env: 
+          GF_SECURITY_ADMIN_PASSWORD: wonka
+          GF_USERS_ALLOW_SIGN_UP: false
+          GF_INSTALL_PLUGINS: flant-statusmap-panel,ae3e-plotly-panel
+       volume:
+        - /mnt/second/internet-monitoring/grafana/provisioning/:/etc/grafana/provisioning/
+
